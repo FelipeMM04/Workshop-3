@@ -6,16 +6,29 @@ Este repositorio contiene la **Parte A** del proyecto: Ingesta, Limpieza de Dato
 
 ## 📌 PARTE A: Data Profiling y Machine Learning
 
-### Step 1 — Exploratory Data Analysis (EDA)
+## 🔍 Step 1 — Exploratory Data Analysis (EDA)
 
-Realizamos el análisis exploratorio de los archivos CSV históricos del *World Happiness Report* (2015 a 2019) guardados en `data/raw/`.
+Se evaluó la calidad, consistencia y estructura de los datos históricos del *World Happiness Report* (2015–2019) almacenados en `data/raw/` antes de su ingesta en el pipeline.
 
-#### Observaciones de Calidad de Datos (Data Quality Observations):
-1. **Diferencias de Esquema (Schema Differences):** Las columnas varían significativamente entre años. Por ejemplo, la columna de país se llama `Country` (2015-2017) vs `Country or region` (2018-2019). El target cambia entre `Happiness Score`, `Happiness.Score` y `Score`.
-2. **Valores Nulos (Missing Values):** No se detectaron valores nulos en 2015, 2016, 2017 ni 2019. En **2018** se identificó **1 valor nulo** en la columna `Perceptions of corruption`.
-3. **Registros Duplicados (Duplicated Records):** 0 filas duplicadas exactas en todos los datasets.
-4. **Tipos de Datos e Inconsistencias (Data Types):** Todos los valores numéricos están en formato flotante (`float64`) y los nombres de los países en texto (`str`).
-5. **Outliers:** Las variables numéricas se mantienen dentro de los rangos metodológicos esperados (ej. `Score` entre ~2.69 y ~7.77). Los valores mínimos de `0.0` responden a la escala de países en la cola del informe.
+---
+
+### Observaciones y Hallazgos de Calidad de Datos
+
+#### 1. Diferencias de Esquema (Schema Differences)
+Las nomenclaturas de las columnas varían entre las entregas anuales.
+* **Resultado:** La columna de país varía entre `Country` (2015-2017) y `Country or region` (2018-2019), mientras que la variable objetivo adopta los nombres `Happiness Score`, `Happiness.Score` y `Score`. Se requiere un mapeo de estandarización previo a la ingesta.
+
+#### 2. Valores Nulos (Missing Values)
+Evaluación de integridad de los datos en los 5 archivos históricos.
+* **Resultado:** Integridad del 100% en 2015, 2016, 2017 y 2019. Únicamente se detectó **1 valor nulo** en la columna `Perceptions of corruption` correspondiente al dataset de **2018**.
+
+#### 3. Registros Duplicados e Inconsistencias (Duplicated Records & Types)
+Verificación de duplicidad y validación de tipos de datos de las variables.
+* **Resultado:** **0 filas duplicadas** en todos los datasets. Correcta tipificación con nombres de países en texto (`str`) y variables numéricas en punto flotante (`float64`).
+
+#### 4. Valores Fuera de Rango (Outliers)
+Inspección de distribuciones numéricas sobre los factores socioeconómicos.
+* **Resultado:** Las variables se mantienen dentro de los rangos metodológicos teóricos (ej. puntaje de felicidad entre ~2.69 y ~7.77). Los valores mínimos (`0.0`) corresponden legítimamente a los países de la cola inferior del reporte.
 
 #### Propuesta de Esquema Unificado (Unified Schema Proposal):
 
@@ -33,53 +46,107 @@ Realizamos el análisis exploratorio de los archivos CSV históricos del *World 
 
 ---
 
-### Step 2 — Data Cleaning and Harmonization
+##  Step 2 — Data Cleaning and Harmonization
 
-Diseñamos un pipeline de limpieza y consolidación de datos:
-
-- **Estandarización de columnas:** Renombramos todas las variables de los 5 archivos al esquema unificado.
-- **Manejo de valores nulos:** Se imputó el único valor nulo de `corruption` en 2018 utilizando la **mediana** de ese mismo año para conservar el tamaño muestral sin sesgar la distribución.
-- **Resolución de inconsistencias:** Eliminamos columnas secundarias no homogéneas (rangos, intervalos de confianza, errores estándar) para mantener un esquema homogéneo de 9 columnas.
-- **Unificación:** Concatenamos los 5 datasets agregando la columna `year` y exportamos el archivo estandarizado a `data/processed/cleaned_happiness.csv` (**782 filas, 9 columnas**).
+Se implementó un pipeline automatizado de limpieza, estandarización y consolidación de los 5 archivos CSV históricos en un único dataset procesado.
 
 ---
 
-### Step 3 — Feature Engineering
+### Acciones de Limpieza y Transformación
 
-Preparación de las características para el modelo predictivo:
+#### 1. Estandarización de Esquema 
+Homologación de nombres de columnas a lo largo de las entregas de 2015 a 2019.
+* **Resultado:** Mapeo y renombrado unificado de todas las variables hacia un esquema de nombres consistente y libre de caracteres especiales.
 
-- **Selección de Features:** `gdp`, `family`, `health`, `freedom`, `generosity`, `corruption`.
-- **Variable Objetivo (Target):** `actual_happiness_score`.
-- **Prevención de Target Leakage:** Excluimos identificadores categóricos (`country`, `year`) y posiciones de ranking (`Rank`).
-- **Análisis Estadístico y Correlación:** Evaluamos la matriz de correlación entre las variables independientes y el target, confirmando relaciones positivas relevantes en PIB, apoyo familiar y esperanza de vida.
-- **Escalamiento:** Utilizamos `StandardScaler` de scikit-learn dentro de un `Pipeline` para normalizar las características sin provocar fugas de datos (*data leakage*) entre entrenamiento y prueba.
+#### 2. Tratamiento de Imputación de Nulos 
+Gestión del dato faltante detectado en el factor de corrupción.
+* **Resultado:** Imputación del valor nulo en `corruption` (2018) utilizando la **mediana** de ese mismo año, preservando el tamaño muestral sin sesgar la distribución de la variable.
 
----
+#### 3. Depuración de Atributos 
+Filtro de variables irrelevantes o inconsistentes entre años (errores estándar, intervalos de confianza y rangos).
+* **Resultado:** Eliminación de columnas no homogéneas para consolidar una estructura final ajustada de **9 variables principales**.
 
-### Step 4 — Train Regression Model
-
-Entrenamiento, evaluación y serialización del modelo de Machine Learning:
-
-- **División de datos:** 70% entrenamiento (**547 registros**) y 30% prueba (**235 registros**), utilizando `test_size=0.30` y `random_state=42`.
-- **Algoritmo:** `RandomForestRegressor(n_estimators=100, random_state=42)`.
-- **Pipeline Reproducible:** Encapsulamos el preprocesamiento (`StandardScaler`) y el modelo dentro de un `Pipeline` de scikit-learn.
-- **Métricas de Evaluación Obtencidas:**
-  - **MAE (Mean Absolute Error):** `0.4069`
-  - **RMSE (Root Mean Squared Error):** `0.5239`
-  - **R² (R-Squared):** `0.7802`
-- **Artefacto Serializado:** Se guardó el modelo compilado completo en `models/model.pkl`.
+#### 4. Consolidación y Exportación 
+Concatenación de los datos históricos agregando la dimensión temporal implícita.
+* **Resultado:** Generación del dataset unificado `data/processed/cleaned_happiness.csv` con **782 filas y 9 columnas**, listo para modelado e ingesta.
 
 ---
 
-### Step 5 — Kafka Producer & Event Contract
+## Step 3 — Feature Engineering
 
-Implementamos el script `kafka/producer.py` encargado de simular la ingesta de eventos en streaming hacia Apache Kafka en Docker.
+Se preparó el conjunto de características (features) y se aplicó la transformación estadística requerida para el entrenamiento del modelo predictivo.
 
-#### Características del Producer:
-1. **Creación del Topic:** Crea y valida el topic `happiness-events` con **3 particiones** y un **factor de replicación de 1**.
-2. **Event Key:** Transmite cada registro utilizando el nombre del país (`country`) como clave (*key*), garantizando el particionamiento dinámico y la preservación del orden por país.
-3. **Simulación de Streaming:** Envía los registros uno a uno desde `data/processed/cleaned_happiness.csv` con un retardo configurable (`DELAY_SECONDS = 0.5`).
-4. **Serialización JSON:** Cada evento cumple estrictamente con el esquema JSON exigido:
+---
+
+### Transformaciones y Selección de Variables
+
+#### 1. Selección de Atributos y Target 
+Definición de variables explicativas socioeconómicas y la variable objetivo a predecir.
+* **Resultado:** Matriz de características conformada por `gdp`, `family`, `health`, `freedom`, `generosity` y `corruption`. Variable objetivo configurada como `actual_happiness_score`.
+
+#### 2. Control de Fuga de Datos 
+Filtrado riguroso de atributos no predictivos o deterministas.
+* **Resultado:** Exclusión total de identificadores categóricos (`country`, `year`) y columnas de posicionamiento directo (`Rank`) para garantizar un aprendizaje supervisado sin sesgos.
+
+#### 3. Análisis de Correlación 
+Evaluación cuantitativa de la relación lineal entre las variables explicativas y el puntaje de felicidad.
+* **Resultado:** Confirmación de fuertes correlaciones positivas directas con PIB (`gdp`), apoyo social (`family`) y esperanza de vida (`health`).
+
+#### 4. Escalamiento de Características 
+Normalización de las variables numéricas a una misma escala.
+* **Resultado:** Integración de `StandardScaler` dentro de un `Pipeline` de scikit-learn, asegurando la transformación adecuada y evitando data leakage entre los conjuntos de entrenamiento y prueba.
+
+---
+
+##  Step 4 — Train Regression Model
+
+Se construyó, evaluó y serializó el modelo de Machine Learning supervisado para la predicción del puntaje de felicidad.
+
+---
+
+### Proceso de Entrenamiento y Validación
+
+#### 1. Particionamiento del Dataset
+División estratificada del conjunto de datos histórico procesado.
+* **Resultado:** Separación de datos en 70% entrenamiento (**547 registros**) y 30% prueba (**235 registros**), garantizando reproducibilidad mediante `random_state=42`.
+
+#### 2. Arquitectura del Modelo y Pipeline
+Encapsulamiento del flujo de transformación y estimación.
+* **Resultado:** Construcción de un `Pipeline` con `StandardScaler` y un algoritmo `RandomForestRegressor` (100 estimadores), asegurando la reproducibilidad total de la inferencia.
+
+#### 3. Métricas de Evaluación 
+Validación cuantitativa sobre el conjunto de prueba independiente.
+* **Resultado:**
+  * **MAE (Mean Absolute Error):** `0.4069`
+  * **RMSE (Root Mean Squared Error):** `0.5239`
+  * **R² (R-Squared):** `0.7802` (el modelo explica el 78.02% de la variabilidad del puntaje de felicidad).
+
+#### 4. Serialización del Artefacto 
+Persistencia del modelo listo para producción.
+* **Resultado:** Exportación del pipeline entrenado en la ruta `models/model.pkl` para su consumo directo en el consumidor de Kafka.
+
+---
+
+## Step 5 — Kafka Producer & Event Contract
+
+Se desarrolló el productor de eventos en Python (`kafka/producer.py`) y el módulo de validación de contrato (`kafka/event_contract.py`) para simular la transmisión en tiempo real hacia Apache Kafka en Docker.
+
+---
+
+### Componentes y Reglas de Ingesta
+
+#### 1. Configuración del Topic y Particionamiento (Topic Architecture)
+Creación y administración de la infraestructura del mensaje en Kafka.
+* **Resultado:** Configuración del topic `happiness-events` con **3 particiones** y un **factor de replicación de 1**. Transmisión mediante clave (`key = country`) para asegurar el particionamiento dinámico y el orden cronológico estricto por país.
+
+#### 2. Simulación de Streaming en Tiempo Real (Streaming Ingestion)
+Procesamiento iterativo de los datos unificados.
+* **Resultado:** Lectura y envío registro a registro desde `data/processed/cleaned_happiness.csv` hacia el cluster con un tiempo de espera configurable (`DELAY_SECONDS = 0.5`).
+
+#### 3. Estructura y Serialización de Eventos (JSON Payload Schema)
+Serialización de los datos bajo una estructura de evento estandarizada.
+* **Resultado:** Formateo estricto del payload en JSON codificado en UTF-8 con metadatos de auditoría (`event_id`, `event_time` en formato ISO-8601).
+
    ```json
    {
      "event_id": "E001",
@@ -95,22 +162,32 @@ Implementamos el script `kafka/producer.py` encargado de simular la ingesta de e
      "event_time": "2026-11-07T10:58:24"
    }
 
-#### Event Contract (`kafka/event_contract.py`):
-Módulo encargado de validar las reglas de negocio antes de procesar la inferencia:
-- Verificación de tipos de datos, presencia de campos obligatorios y formato ISO-8601 en `event_time`.
-- Garantiza que `actual_happiness_score` no sea utilizado como feature dentro del modelo.
 
 ---
 
-### Step 6 — Kafka Consumer & Real-Time Inference
+## Step 6 — Kafka Consumer & Real-Time Inference
 
-Implementamos `kafka/consumer.py`, perteneciente al grupo consumidor `happiness-ml-team`, para la ingesta, auditoría, inferencia y persistencia en tiempo real.
+Se implementó el servicio consumidor en Python (`kafka/consumer.py`) integrado en el consumer group `happiness-ml-team`, encargado del procesamiento en tiempo real, auditoría raw, inferencia y persistencia dimensional.
 
-#### Flujo de Procesamiento del Consumer:
-1. **Auditoría RAW:** Guarda la carga útil (*payload*) original del evento en la tabla de PostgreSQL `raw_happiness_events` **antes de cualquier transformación**, registrando metadatos de Kafka (partición, offset) y asignando su estado (`VALID`, `INVALID_SCHEMA`, `INVALID_VALUES`).
-2. **Validación:** Evalúa el mensaje con `event_contract.py`. Si el evento es inválido, lo registra en `raw_happiness_events` con el motivo del fallo, lo descarta de la inferencia y **continúa la ejecución sin tumbar el pipeline**.
-3. **Inferencia en Tiempo Real:** Para los eventos con estado `VALID`, extrae las 6 características en el orden estricto del entrenamiento, realiza la predicción llamando a `models/model.pkl` y calcula el error absoluto (`|actual - predicted|`).
-4. **Persistencia Dimensional:** Inserta las métricas finales generadas en tiempo real en la tabla `fact_predictions`.
+---
+
+### Flujo de Procesamiento e Inferencia
+
+#### 1. Auditoría Raw e Ingestion Trace (RAW Event Store)
+Registro completo del payload original en la tabla `raw_happiness_events` de PostgreSQL previo a cualquier transformación.
+* **Resultado:** Captura persistente de metadatos de Kafka (`partition`, `offset`), payload en JSON y estado de auditoría inicial (`VALID`, `INVALID_SCHEMA`, `INVALID_VALUES`).
+
+#### 2. Tolerancia a Fallos y Validación de Contrato (Fault Tolerance & Contract Check)
+Evaluación en tiempo real del evento mediante `event_contract.py`.
+* **Resultado:** Los eventos corruptos o fuera de esquema son etiquetados con el motivo del fallo en `raw_happiness_events` y descartados para la inferencia, garantizando la continuidad operativa sin detener el pipeline.
+
+#### 3. Inferencia de ML en Tiempo Real (Real-Time Inference)
+Extracción de variables explicativas y ejecución del modelo serializado para eventos con estado `VALID`.
+* **Resultado:** Invocación en memoria a `models/model.pkl` pasando las 6 características en el orden exacto de entrenamiento, calculando en caliente la predicción (`predicted_score`) y el error absoluto (`prediction_error = |actual - predicted|`).
+
+#### 4. Persistencia en Modelo Dimensional (Data Warehouse Persistence)
+Almacenamiento de las métricas resultantes sobre la capa de analítica.
+* **Resultado:** Inserción directa de cada evento procesado con su predicción y margen de error en la tabla de hechos `fact_predictions`, quedando disponible de inmediato para consultas y Power BI.
 
 ---
 
@@ -122,25 +199,22 @@ Diseñamos e implementamos un modelo dimensional analítico (esquema en estrella
 ![Diagrama Esquema en Estrella](star_schema_diagram.png)
 
 #### 1. Capa RAW / Staging (`raw_happiness_events`)
-Tabla encargada de preservar el payload JSON original enviado por Apache Kafka **antes de cualquier transformación o inferencia**, garantizando la trazabilidad y auditoría de los mensajes.
-- **Campos principales:** `raw_id` (PK), `event_id`, `topic_name`, `kafka_partition`, `kafka_offset`, `payload` (JSONB), `processing_status` (`VALID`, `INVALID_SCHEMA`, `INVALID_VALUES`), `error_message`, `received_at`.
+Preservación de la carga útil (payload JSON) original transmitida por Apache Kafka antes de cualquier transformación o inferencia.
+* **Resultado:** Trazabilidad completa con metadatos de Kafka (`topic_name`, `kafka_partition`, `kafka_offset`), control de estados (`VALID`, `INVALID_SCHEMA`, `INVALID_VALUES`) y registro de fallos en `error_message`.
 
 #### 2. Capa de Dimensiones (Lookup Tables)
-- **`dim_country`:** Normaliza los países procesados para evitar la redundancia de texto y optimizar las agrupaciones por ubicación geográfica.
-  - **Campos:** `country_id` (PK), `country_name` (UNIQUE), `created_at`.
-- **`dim_date`:** Desglosa la temporalidad del evento permitiendo agregaciones analíticas por año, mes, día y día de la semana.
-  - **Campos:** `date_id` (PK, formato `YYYYMMDD`), `full_date`, `year`, `month`, `day`, `day_of_week`.
+Normalización de entidades de contexto para optimización de consultas y agregaciones analíticas.
+* **Resultado:** 
+  * **`dim_country`:** Desacopla los nombres de países eliminando la redundancia de texto mediante `country_id` como clave primaria.
+  * **`dim_date`:** Desglosa la temporalidad del evento en clave sintética (`date_id` en formato `YYYYMMDD`), permitiendo agregaciones flexibles por año, mes, día y día de la semana.
 
 #### 3. Capa de Hechos (`fact_predictions`)
-Tabla central de almacenamiento de las predicciones en tiempo real. Contiene las métricas numéricas del modelo y las llaves foráneas (`FK`) que la relacionan con las tablas dimensionales y la capa RAW.
-- **Campos principales:** `prediction_id` (PK), `raw_event_id`, `raw_id` (FK), `country_id` (FK), `date_id` (FK), `actual_score`, `predicted_score`, `prediction_error`, `prediction_timestamp`, `created_at`.
+Tabla central del modelo en estrella para el almacenamiento de métricas numéricas y resultados del modelo de Machine Learning.
+* **Resultado:** Consolidación de valores reales (`actual_score`), predicciones (`predicted_score`) y márgenes de error (`prediction_error`), vinculados mediante claves foráneas (`FK`) a `dim_country`, `dim_date` y `raw_happiness_events`.
 
-#### 4. Automatización en el Consumer (`kafka/consumer.py`)
-El script de ingesta fue adaptado para gestionar el poblamiento relacional automático:
-1. Inserta el evento raw en `raw_happiness_events` obteniendo su `raw_id`.
-2. Busca o registra dinámicamente el país en `dim_country` obteniendo su `country_id`.
-3. Parsea `event_time`, poblando `dim_date` para generar su correspondiente `date_id`.
-4. Realiza la inferencia con el modelo serializado `model.pkl` e inserta los resultados finales en `fact_predictions` manteniendo integridad referencial total.
+#### 4. Automatización Relacional en Ingesta (Consumer Pipeline Integration)
+Gestión del poblamiento dinámico e integridad referencial desde `kafka/consumer.py`.
+* **Resultado:** Secuencia automatizada de inserción que registra el evento raw, resuelve o crea dinámicamente las claves en las dimensiones `dim_country` y `dim_date`, ejecuta la inferencia en tiempo real y persiste la métrica en `fact_predictions` manteniendo 100% de integridad referencial.
 
 ---
 
