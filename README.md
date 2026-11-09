@@ -275,3 +275,28 @@ Analiza la varianza del error de predicción desglosada por país para detectar 
 * **Resultado:** Identifica países con mayor margen de desviación (ej. Botswana) frente a aquellos con menor varianza (ej. Benin, Dinamarca).
 
 ---
+
+## Como correr kafka
+
+Una vez que los servicios de Docker estén corriendo y el informe de Power BI esté conectado a la base de datos PostgreSQL, ejecuta la simulación de streaming en tiempo real siguiendo estos pasos:
+
+---
+
+### Paso 1: Preparar las Terminales
+Abre **2 terminales independientes** en VS Code y en ambas navega hacia la carpeta del pipeline de Kafka:
+
+```bash
+cd kafka
+
+### Paso 2: Ejecutar el Consumer (Primera Terminal)
+
+python consumer.py
+
+### Paso 3 Ejecutar el Producer (Segunda Terminal)
+
+python producer.py
+
+Resultado: La consola del productor mostrará en tiempo real la transmisión de los objetos JSON hacia el topic happiness-events de Kafka.
+
+---
+
