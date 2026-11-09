@@ -163,3 +163,41 @@ Mediante el script de verificación `kafka/verify_step8_traceability.py`, se aud
 ![Evidencia de Ejecución Step 8](step8_evidencia.png)
 
 ---
+
+## 📊 Step 9 — Dashboard and KPIs (Power BI)
+
+Se implementó un panel interactivo en **Power BI Desktop** conectado directamente a la base de datos PostgreSQL (`happiness_db`), consumiendo el modelo dimensional (`fact_predictions`, `dim_country`, `dim_date`) sin utilizar archivos CSV estáticos.
+
+---
+
+### Visualizaciones y KPIs
+
+#### 1. KPI 1: Error Promedio Global (Average Prediction Error)
+Mide la desviación global del modelo comparando el valor real del puntaje de felicidad contra la predicción generada en el pipeline.
+
+![KPI 1 - Error Promedio](assets/kpi1_avg_error.png)
+
+* **Resultado:** Error promedio global de **0.22**, reflejando una alta precisión general del modelo.
+
+#### 2. KPI 2: Predicciones por País (Predictions by Country)
+Visualiza el volumen total de predicciones procesadas e ingertadas en la base de datos por país.
+
+![KPI 2 - Predicciones por País](assets/kpi2_predictions_by_country.png)
+
+* **Resultado:** Muestra la distribución de carga y confirma el procesamiento continuo de eventos en Kafka por país.
+
+#### 3. KPI 3: Puntaje Actual vs. Predicho (Predicted vs. Actual Score)
+Evalúa la correlación entre el valor real (`actual_score`) y la predicción (`predicted_score`) agrupado por país.
+
+![KPI 3 - Actual vs Predicho](assets/kpi3_actual_vs_predicted.png)
+
+* **Resultado:** Alineación diagonal uniforme que confirma un fuerte ajuste del modelo de Machine Learning.
+
+#### 4. KPI 4: Distribución del Error por País (Prediction Error Distribution)
+Analiza la varianza del error de predicción desglosada por país para detectar sesgos regionales.
+
+![KPI 4 - Distribución del Error](assets/kpi4_error_distribution.png)
+
+* **Resultado:** Identifica países con mayor margen de desviación (ej. Botswana) frente a aquellos con menor varianza (ej. Benin, Dinamarca).
+
+---
